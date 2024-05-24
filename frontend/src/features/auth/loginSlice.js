@@ -24,13 +24,15 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-const loginSlice = createSlice({
-  name: 'login',
-  initialState: {
+export const initialStates = {
     user: null,
     loading: false,
     error: null,
-  },
+};
+
+const loginSlice = createSlice({
+  name: 'login',
+  initialState: initialStates,
   reducers: {
   },
   extraReducers: (builder) => {
@@ -46,7 +48,8 @@ const loginSlice = createSlice({
         state.user = {
           username:decodeddata.payload.username,
           email:decodeddata.payload.email,
-          id:decodeddata.payload.user_id
+          id:decodeddata.payload.user_id,
+          profile:decodeddata.payload.profile_pic
         };
         state.error = null;
         console.log('updated user',state.user) 
@@ -61,6 +64,3 @@ const loginSlice = createSlice({
 });
 
 export default loginSlice.reducer;
-
-
-

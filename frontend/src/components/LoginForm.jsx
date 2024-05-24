@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser } from '../features/auth/loginSlice'; // Import setUserFromToken action
 import { useNavigate } from 'react-router-dom';
-
-import decodeJWT from '../util/tokenDecoder';
+import { loginUserAsync } from '../features/auth/userSlice';
 
 const LoginForm = () => {
   const dispatch = useDispatch();
@@ -26,14 +24,13 @@ const LoginForm = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    dispatch(loginUser(formData))
-      .then((response) => {
-        // alert(JSON.stringify(response))
-        // const decodedToken = decodeJWT(response); // Decode the access token
-        // dispatch(setUserFromToken(decodedToken)); // Dispatch setUserFromToken action
-        navigate('/Profile');
-      })
-      .catch((error) => console.error('Login failed:', error));
+    console.log(formData);
+    try {
+      await dispatch(loginUserAsync(formData));
+      navigate('/profile');
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
   };
 
   return (
@@ -68,6 +65,7 @@ const LoginForm = () => {
           {error && <p className="text-danger">{error}</p>}
         </form>
         <p>Don't have an account? <a href="/signup">Sign Up</a></p>
+        <p>admin  account? <a href="/admin">Admin</a></p>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 export const fetchUsers = () => async (dispatch) => {
   try {
-    const response = await axios.get('http://localhost:8000/api/users');
+    const response = await axios.get('http://localhost:8000/api/users/');
     dispatch(setUsers(response.data));
     console.log(response.data);
   } catch (error) {

@@ -1,12 +1,26 @@
+import datetime
 from django.shortcuts import get_object_or_404
-from .models import User
+from .models import *
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework import status
+from rest_framework import status,generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from django.contrib.auth import logout
+from django.http import JsonResponse
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.generics import RetrieveUpdateAPIView
+from datetime import datetime, timedelta
+from django.shortcuts import render
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import AccessToken
+from django.contrib.auth import login
+from django.utils import timezone
+
+
 
 class SignupView(APIView):
     def post(self, request):
@@ -31,6 +45,15 @@ class TokenView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         token = response.data.get('access')
+
+        access_token = AccessToken(token)
+        access_token.set_exp(timezone.now() + timedelta(minutes=15))
+        user_id = access_token.payload.get('user_id')
+        user = User.objects.get(id=user_id)
+        login(request, user)
+        response.data['access_token_expires_at'] = access_token['exp']
+        response.data['token_creation_time'] = access_token['iat']
+        
         response.set_cookie('access_token', token, httponly=True)
         print("cookie created")
         return response
@@ -43,6 +66,12 @@ class UserListView(APIView):
         return Response(serializer.data)
     
 
+# views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import User
+from .serializers import UserEditSerializer
 
 class user_edit(APIView):
     def put(self, request, user_id):
@@ -52,7 +81,7 @@ class user_edit(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 
 class user_delete(APIView):
     def delete(self, request, user_id):
@@ -69,14 +98,10 @@ class user_delete(APIView):
         
 class UserDetailsView(APIView):
     def get(self, request, user_id):
-        user = get_object_or_404(User, pk=user_id)
+        user = get_object_or_404(User, id=user_id)
         serializer = UserSerializer(user)
         return Response(serializer.data)
     
-from django.contrib.auth import logout
-from django.http import JsonResponse
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.tokens import RefreshToken
 
 def user_logout(request, user_id):
     try:
@@ -97,3 +122,90 @@ def user_logout(request, user_id):
         return JsonResponse({'message': str(e)}, status=400)
 
     return JsonResponse({'message': f'Logout successful for user with ID {user_id}'})
+
+
+# class Profile_Edit(APIView):
+#     def put(self, request, user_id):
+#         user = get_object_or_404(User, id=user_id)
+#         serialize = UserEditSerializer(user, data=request.data)
+#         print(serialize.is_valid())
+#         if serialize.is_valid():
+#             serialize.save()
+#             return Response(serialize.data)
+#         return Response(serialize.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProfileView(APIView):
+    def get(self, request, user_id):
+        user_profile = get_object_or_404(User, id=user_id)
+        serializer = UserProfileSerializer(user_profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+# admin
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth import authenticate
+from .models import User
+from .serializers import MyToken
+
+
+class AdminLogin(TokenObtainPairView):
+    serializer_class = AdminTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        # Authenticate admin user
+        user = authenticate(username=username, password=password)
+        
+        if user and user.is_superuser:
+            # Generate token for admin user
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            token = serializer.validated_data
+
+            # Add additional data to the token if needed
+            token['username'] = user.username
+            token['email'] = user.email
+
+            return Response(token, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+def user_pro(req):
+    user = User.objects.all()
+    context = {
+        "users": user
+    }
+    return render(req, 'index.html', context)
+
+
+def edit_profile(req, id):
+    print('id', id)
+    pass
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+
+@api_view(['POST'])
+def Profile_Edit(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        login(request, user)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    serializer = ProfileEditSerializer(instance=user, data=request.data)
+    print(serializer.is_valid())
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,6 +1,6 @@
 // reducer.js
 const initialState = {
-  users: [], // Initialize users array as an empty array
+  users: [],
 };
 
 const userReducer = (state = initialState, action) => {

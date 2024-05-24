@@ -33,6 +33,7 @@ const Dashboard = () => {
       <h3>Dashboard</h3>
       <h1>Users</h1>
       <button onClick={handleAddUserClick}>Add User</button>
+      <button onClick={handleAddUserClick}>Add User</button>
       <table className="table">
         <thead className="thead-dark">
           <tr>
